@@ -90,3 +90,23 @@ export function distanceToRect(
     { x: rect.x, y: rect.y },
   ]);
 }
+
+export function inRect(
+  point: {
+    x: number;
+    y: number;
+  },
+  rect: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }
+) {
+  return (
+    point.x > rect.x &&
+    point.x < rect.x + rect.width &&
+    point.y > rect.y &&
+    point.y < rect.y + rect.height
+  );
+}

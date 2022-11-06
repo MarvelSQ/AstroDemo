@@ -1,4 +1,4 @@
-import { distanceToMultiLines, distanceToRect } from "./util";
+import { distanceToMultiLines, distanceToRect, inRect } from "./util";
 
 export enum Action {
   Rect = "Rect",
@@ -6,12 +6,14 @@ export enum Action {
   Path = "Path",
   Move = "Move",
   Select = "Select",
+  Text = "Text",
 }
 
 enum ShapeType {
   rect = "rect",
   circle = "circle",
   path = "path",
+  text = "text",
 }
 
 type Shape =
@@ -35,6 +37,20 @@ type Shape =
         y: number;
       };
       radius: number;
+    }
+  | {
+      shape: ShapeType.text;
+      location: {
+        x: number;
+        y: number;
+      };
+      text: string;
+      width: number;
+      style: {
+        fontFamily: string;
+        fontSize: number;
+        color: string;
+      };
     };
 
 export function initCanvas(canvas: HTMLCanvasElement) {
@@ -65,6 +81,80 @@ export function initCanvas(canvas: HTMLCanvasElement) {
   renderingObj.current.border.bottom = rect.height * radio;
   // get 2d context
 
+  function getTranslate(
+    paint: CanvasRenderingContext2D
+  ): { x: number; y: number } | void {
+    const transforms = paint.getTransform();
+    if (transforms) {
+      return {
+        x: transforms.e,
+        y: transforms.f,
+      };
+    }
+  }
+
+  let lastHighlight = -1;
+
+  function rerenderObj(paint: CanvasRenderingContext2D, highlight?: number) {
+    lastHighlight = highlight ?? -1;
+    const { border } = renderingObj.current;
+    const safeRange = 100;
+    paint?.clearRect(
+      border.left - safeRange,
+      border.top - safeRange,
+      border.right - border.left + safeRange * 2,
+      border.bottom - border.top + safeRange * 2
+    );
+
+    renderingObj.current.objs.forEach((shape, index) => {
+      if (index === highlight) {
+        paint && (paint.strokeStyle = "red");
+      } else {
+        paint && (paint.strokeStyle = "black");
+      }
+      if (shape.shape === "path") {
+        paint?.beginPath();
+        const paths = shape.points;
+        paths.forEach(([x, y], index) => {
+          if (index === 0) {
+            paint?.moveTo(x, y);
+          } else {
+            paint?.lineTo(x, y);
+          }
+        });
+        paint?.stroke();
+      } else if (shape.shape === "rect") {
+        paint?.strokeRect(
+          shape.location.x,
+          shape.location.y,
+          shape.width,
+          shape.height
+        );
+      } else if (shape.shape === ShapeType.circle) {
+        paint?.beginPath();
+        paint?.arc(
+          shape.location.x,
+          shape.location.y,
+          shape.radius,
+          0,
+          Math.PI * 2
+        );
+        paint?.stroke();
+      } else if (shape.shape === ShapeType.text) {
+        paint.beginPath();
+        if (index === highlight) {
+          paint.fillStyle = "red";
+        } else {
+          paint.fillStyle = "black";
+        }
+        paint.font = `${shape.style.fontSize * window.devicePixelRatio}px ${
+          shape.style.fontFamily
+        }`;
+        paint.fillText(shape.text, shape.location.x, shape.location.y);
+      }
+    });
+  }
+
   function handleDown(startPoint: { x: number; y: number }) {
     console.log("action", currentAction);
     console.log("position", startPoint);
@@ -75,17 +165,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
     const scaleX = width / rect.width;
     const scaleY = height / rect.height;
 
-    function getTranslate(): { x: number; y: number } | void {
-      const transforms = paint?.getTransform();
-      if (transforms) {
-        return {
-          x: transforms.e,
-          y: transforms.f,
-        };
-      }
-    }
-
-    const translate = getTranslate();
+    const translate = paint && getTranslate(paint);
 
     const inPaintX = (startPoint.x - rect.left) * scaleX - (translate?.x || 0);
     const inPaintY = (startPoint.y - rect.top) * scaleY - (translate?.y || 0);
@@ -112,54 +192,6 @@ export function initCanvas(canvas: HTMLCanvasElement) {
         renderingObj.current.border.bottom,
         y
       );
-    }
-
-    function rerenderObj(highlight?: number) {
-      const { border } = renderingObj.current;
-      const safeRange = 100;
-      paint?.clearRect(
-        border.left - safeRange,
-        border.top - safeRange,
-        border.right - border.left + safeRange * 2,
-        border.bottom - border.top + safeRange * 2
-      );
-
-      renderingObj.current.objs.forEach((shape, index) => {
-        if (index === highlight) {
-          paint && (paint.strokeStyle = "red");
-        } else {
-          paint && (paint.strokeStyle = "black");
-        }
-        if (shape.shape === "path") {
-          paint?.beginPath();
-          const paths = shape.points;
-          paths.forEach(([x, y], index) => {
-            if (index === 0) {
-              paint?.moveTo(x, y);
-            } else {
-              paint?.lineTo(x, y);
-            }
-          });
-          paint?.stroke();
-        } else if (shape.shape === "rect") {
-          paint?.strokeRect(
-            shape.location.x,
-            shape.location.y,
-            shape.width,
-            shape.height
-          );
-        } else if (shape.shape === ShapeType.circle) {
-          paint?.beginPath();
-          paint?.arc(
-            shape.location.x,
-            shape.location.y,
-            shape.radius,
-            0,
-            Math.PI * 2
-          );
-          paint?.stroke();
-        }
-      });
     }
 
     if (currentAction === Action.Path) {
@@ -231,7 +263,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
         lastY = clientY;
 
         requestAnimationFrame(() => {
-          rerenderObj();
+          paint && rerenderObj(paint);
         });
       }
 
@@ -260,7 +292,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
       function renderRect(event: MouseEvent | TouchEvent) {
         const point = "touches" in event ? event.touches[0] : event;
         requestAnimationFrame(() => {
-          rerenderObj();
+          paint && rerenderObj(paint);
 
           const width = (point.clientX - startX) * scaleX;
           const height = (point.clientY - startY) * scaleY;
@@ -317,7 +349,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
       function renderRect(event: MouseEvent | TouchEvent) {
         const point = "touches" in event ? event.touches[0] : event;
         requestAnimationFrame(() => {
-          rerenderObj();
+          paint && rerenderObj(paint);
 
           const width = (point.clientX - startX) * scaleX;
           const height = (point.clientY - startY) * scaleY;
@@ -441,6 +473,32 @@ export function initCanvas(canvas: HTMLCanvasElement) {
                 closestShapeIndex = index;
               }
             }
+          } else if (shape.shape === ShapeType.text) {
+            const { x, y } = shape.location;
+            const {
+              width,
+              style: { fontSize },
+            } = shape;
+
+            const height = fontSize * window.devicePixelRatio;
+
+            const insideTextRect = inRect(
+              {
+                x: inPaintX,
+                y: inPaintY,
+              },
+              {
+                x,
+                y: y - height,
+                width,
+                height,
+              }
+            );
+
+            if (insideTextRect) {
+              closestDistance = 0;
+              closestShapeIndex = index;
+            }
           }
         });
 
@@ -449,7 +507,53 @@ export function initCanvas(canvas: HTMLCanvasElement) {
 
       const closestShapeIndex = getClosestShapeIndex();
 
-      rerenderObj(closestShapeIndex === -1 ? undefined : closestShapeIndex);
+      paint &&
+        rerenderObj(
+          paint,
+          closestShapeIndex === -1 ? undefined : closestShapeIndex
+        );
+    }
+  }
+
+  function handleText(startPoint: { x: number; y: number }) {
+    const paint = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+
+    if (paint) {
+      const text = prompt("请输入文字");
+      const scaleX = window.devicePixelRatio;
+      const scaleY = window.devicePixelRatio;
+      const translate = getTranslate(paint);
+      const inPaintX =
+        (startPoint.x - rect.left) * scaleX - (translate?.x || 0);
+      const inPaintY = (startPoint.y - rect.top) * scaleY - (translate?.y || 0);
+
+      if (text) {
+        const fontSize = 40;
+
+        const fontFamily = "sans-serif";
+
+        paint.font = `${fontSize * window.devicePixelRatio}px sans-serif`;
+
+        const size = paint.measureText(text);
+
+        renderingObj.current.objs.push({
+          shape: ShapeType.text,
+          location: {
+            x: inPaintX,
+            y: inPaintY,
+          },
+          text,
+          style: {
+            fontFamily,
+            fontSize,
+            color: "#000",
+          },
+          width: size.width,
+        });
+
+        rerenderObj(paint);
+      }
     }
   }
 
@@ -469,6 +573,39 @@ export function initCanvas(canvas: HTMLCanvasElement) {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
     });
+  });
+
+  canvas.addEventListener("click", (e) => {
+    if (currentAction === Action.Text) {
+      handleText({
+        x: e.clientX,
+        y: e.clientY,
+      });
+    } else if (currentAction === Action.Select) {
+    }
+  });
+
+  canvas.addEventListener("dblclick", (e) => {
+    if (currentAction === Action.Select && lastHighlight !== -1) {
+      const highlightShape = renderingObj.current.objs[lastHighlight];
+      const paint = canvas.getContext("2d");
+      if (paint && highlightShape.shape === ShapeType.text) {
+        const text = prompt("请输入文字", highlightShape.text);
+        if (text) {
+          highlightShape.text = text;
+
+          paint.font = `${
+            highlightShape.style.fontSize * window.devicePixelRatio
+          }px ${highlightShape.style.fontFamily}`;
+
+          const width = paint.measureText(text).width;
+
+          highlightShape.width = width;
+
+          rerenderObj(paint);
+        }
+      }
+    }
   });
 
   return {

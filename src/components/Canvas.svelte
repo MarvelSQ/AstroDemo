@@ -8,6 +8,7 @@
     { name: "Path", value: Action.Path },
     { name: "Move", value: Action.Move },
     { name: "Select", value: Action.Select },
+    { name: "Text", value: Action.Text },
   ];
 
   let activeAction = Action.Move;
