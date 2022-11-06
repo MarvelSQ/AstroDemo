@@ -10,6 +10,7 @@
     "astro": "astro"
   },
   "devDependencies": {
+    "@astrojs/svelte": "^1.0.2",
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
     "astro": "^1.0.8"
@@ -17,6 +18,7 @@
   "dependencies": {
     "@astrojs/react": "^1.1.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "svelte": "^3.52.0"
   }
 }
