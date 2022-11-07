@@ -53,6 +53,11 @@ type Shape =
       };
     };
 
+/**
+ * 点击位置周围的矩形
+ */
+const SelectOffset = 10;
+
 export function initCanvas(canvas: HTMLCanvasElement) {
   let currentAction: Action | null = null;
 
@@ -403,11 +408,6 @@ export function initCanvas(canvas: HTMLCanvasElement) {
       window.addEventListener("mouseup", removeListener);
       window.addEventListener("touchend", removeListener);
     } else if (currentAction === Action.Select) {
-      /**
-       * 点击位置周围的矩形
-       */
-      const offset = 10;
-
       function getClosestShapeIndex() {
         const shapes = renderingObj.current.objs;
 
@@ -434,7 +434,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
 
             console.log("rect[", index, "]", distance);
 
-            if (distance < offset && distance < closestDistance) {
+            if (distance < SelectOffset && distance < closestDistance) {
               closestDistance = distance;
               closestShapeIndex = index;
             }
@@ -451,7 +451,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
 
             console.log("path[", index, "]", distance);
 
-            if (distance < offset) {
+            if (distance < SelectOffset) {
               if (distance < closestDistance) {
                 closestDistance = distance;
                 closestShapeIndex = index;
@@ -467,7 +467,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
 
             console.log("circle[", index, "]", distance);
 
-            if (distance < offset) {
+            if (distance < SelectOffset) {
               if (distance < closestDistance) {
                 closestDistance = distance;
                 closestShapeIndex = index;
