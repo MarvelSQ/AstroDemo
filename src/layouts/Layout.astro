@@ -1,13 +1,10 @@
 ---
 import { Analytics } from "@vercel/analytics/react";
-import { webVitals } from "../utils/vitals";
 export interface Props {
   title: string;
 }
 
 const { title } = Astro.props as Props;
-
-webVitals();
 ---
 
 <!DOCTYPE html>
@@ -59,3 +56,8 @@ webVitals();
       DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace;
   }
 </style>
+<script>
+  import { webVitals } from "../utils/vitals";
+
+  webVitals();
+</script>

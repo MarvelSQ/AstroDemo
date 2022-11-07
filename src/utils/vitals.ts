@@ -52,7 +52,7 @@ function sendToAnalytics(
 export function webVitals() {
   const analyticsId = import.meta.env.VERCEL_ANALYTICS_ID;
 
-  if (!("document" in globalThis) || !analyticsId) {
+  if (!analyticsId) {
     return;
   }
 
