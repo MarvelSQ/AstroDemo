@@ -100,8 +100,36 @@ export function initCanvas(canvas: HTMLCanvasElement) {
 
   let lastHighlight = -1;
 
+  function handleKeyDown(event: KeyboardEvent) {
+    if (currentAction === Action.Select && lastHighlight !== -1) {
+      // handle delete
+      if (["Delete", "Backspace"].includes(event.key)) {
+        const highlightShape = renderingObj.current.objs[lastHighlight];
+
+        // need confirm
+        if (
+          highlightShape &&
+          confirm(`delete Shape[${lastHighlight}] ${highlightShape.shape}？`)
+        ) {
+          const paint = canvas.getContext("2d");
+          if (paint) {
+            renderingObj.current.objs.splice(lastHighlight, 1);
+            rerenderObj(paint);
+          }
+        }
+      }
+    }
+  }
+
   function rerenderObj(paint: CanvasRenderingContext2D, highlight?: number) {
     lastHighlight = highlight ?? -1;
+
+    if (lastHighlight !== -1) {
+      window.addEventListener("keydown", handleKeyDown);
+    } else {
+      window.removeEventListener("keydown", handleKeyDown);
+    }
+
     const { border } = renderingObj.current;
     const safeRange = 100;
     paint?.clearRect(
